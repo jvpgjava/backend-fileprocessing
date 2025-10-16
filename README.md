@@ -354,10 +354,6 @@ O serviço gera logs estruturados:
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
-
 ## 🆘 Suporte
 
 Para suporte, abra uma issue no repositório ou entre em contato com a equipe de desenvolvimento.
