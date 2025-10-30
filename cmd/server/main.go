@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"backend-fileprocessing/docs"
+    _ "backend-fileprocessing/docs"
 	"backend-fileprocessing/internal/config"
 	"backend-fileprocessing/internal/handlers"
 	"backend-fileprocessing/internal/middleware"

@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"net/http"
-	"time"
+    "net/http"
+    "time"
 
-	"backend-fileprocessing/internal/models"
+    "backend-fileprocessing/internal/models"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 // HealthHandler handler para health checks
@@ -53,8 +53,6 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/status [get]
 func (h *HealthHandler) Status(c *gin.Context) {
-	uptime := time.Since(h.startTime)
-	
 	response := models.StatusResponse{
 		Service:     "backend-fileprocessing",
 		Version:     "1.0.0",

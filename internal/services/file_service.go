@@ -1,18 +1,17 @@
 package services
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
+    "fmt"
+    "io"
+    "log"
+    "path/filepath"
+    "strings"
+    "time"
 
-	"backend-fileprocessing/internal/models"
-	"backend-fileprocessing/internal/processors"
+    "backend-fileprocessing/internal/models"
+    "backend-fileprocessing/internal/processors"
 
-	"github.com/otiai10/gosseract/v2"
+    "github.com/otiai10/gosseract/v2"
 )
 
 // FileService serviço de processamento de arquivos
@@ -48,7 +47,7 @@ func NewFileService() *FileService {
 }
 
 // ProcessFile processa arquivo e extrai texto
-func (fs *FileService) ProcessFile(file io.Reader, filename string, size int64) (*models.Response, error) {
+func (fs *FileService) ProcessFile(file io.Reader, filename string, size int64) (models.Response, error) {
 	startTime := time.Now()
 	fileType := strings.ToLower(filepath.Ext(filename))
 	info := models.NewInfo(filename, fileType, size)
@@ -57,30 +56,30 @@ func (fs *FileService) ProcessFile(file io.Reader, filename string, size int64) 
 
 	// Verificar se tipo é suportado
 	processor, exists := fs.processors[fileType]
-	if !exists {
-		return &models.NewErrorResponse(
-			"UNSUPPORTED_FILE_TYPE",
-			fmt.Sprintf("Tipo de arquivo não suportado: %s", fileType),
-			"Tipos suportados: .pdf, .png, .jpg, .jpeg, .gif, .bmp, .webp, .tiff, .txt, .docx",
-		), nil
-	}
+    if !exists {
+        return models.NewErrorResponse(
+            "UNSUPPORTED_FILE_TYPE",
+            fmt.Sprintf("Tipo de arquivo não suportado: %s", fileType),
+            "Tipos suportados: .pdf, .png, .jpg, .jpeg, .gif, .bmp, .webp, .tiff, .txt, .docx",
+        ), nil
+    }
 
 	// Processar arquivo
 	text, err := processor.Process(file, filename)
-	if err != nil {
-		return &models.NewErrorResponse(
-			"PROCESSING_ERROR",
-			fmt.Sprintf("Erro ao processar arquivo: %v", err),
-			"Verifique se o arquivo não está corrompido",
-		), nil
-	}
+    if err != nil {
+        return models.NewErrorResponse(
+            "PROCESSING_ERROR",
+            fmt.Sprintf("Erro ao processar arquivo: %v", err),
+            "Verifique se o arquivo não está corrompido",
+        ), nil
+    }
 
 	// Calcular tempo de processamento
 	processingTime := time.Since(startTime)
 	info.ProcessingTime = processingTime.String()
 
 	log.Printf("✅ Arquivo processado com sucesso: %d caracteres em %v", len(text), processingTime)
-	return &models.NewSuccessResponse(text, info), nil
+    return models.NewSuccessResponse(text, info), nil
 }
 
 // GetSupportedTypes retorna tipos de arquivo suportados

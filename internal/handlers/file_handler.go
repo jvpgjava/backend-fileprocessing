@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"net/http"
-	"strconv"
+    "net/http"
 
-	"backend-fileprocessing/internal/models"
-	"backend-fileprocessing/internal/services"
+    "backend-fileprocessing/internal/models"
+    "backend-fileprocessing/internal/services"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 // FileHandler handler para processamento de arquivos

@@ -1,14 +1,17 @@
 package processors
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"os"
-	"strings"
+    "archive/zip"
+    "fmt"
+    "io"
+    "log"
+    "os"
+    "path/filepath"
+    "regexp"
+    "strings"
+    "html"
 
-	"github.com/otiai10/gosseract/v2"
-	"github.com/nguyenthenguyen/docx"
+    "github.com/otiai10/gosseract/v2"
 )
 
 // DocxProcessor processador de arquivos DOCX
@@ -63,21 +66,52 @@ func (p *DocxProcessor) Process(file io.Reader, filename string) (string, error)
 
 // extractTextFromDocx extrai texto diretamente do DOCX
 func (p *DocxProcessor) extractTextFromDocx(filePath string) (string, error) {
-	// Abrir arquivo DOCX
-	doc, err := docx.ReadDocxFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("erro ao abrir arquivo DOCX: %v", err)
-	}
-	defer doc.Close()
+    // DOCX é um ZIP; vamos ler word/document.xml e extrair o texto simples
+    zr, err := zip.OpenReader(filePath)
+    if err != nil {
+        return "", fmt.Errorf("erro ao abrir DOCX (zip): %v", err)
+    }
+    defer zr.Close()
 
-	// Extrair texto
-	text := doc.Editable().GetText()
-	if len(strings.TrimSpace(text)) == 0 {
-		return "", fmt.Errorf("arquivo DOCX não contém texto")
-	}
+    var xmlData string
+    for _, f := range zr.File {
+        // Documento principal
+        if f.Name == "word/document.xml" || f.Name == filepath.ToSlash("word/document.xml") {
+            rc, err := f.Open()
+            if err != nil {
+                return "", fmt.Errorf("erro ao abrir document.xml: %v", err)
+            }
+            b, err := io.ReadAll(rc)
+            rc.Close()
+            if err != nil {
+                return "", fmt.Errorf("erro ao ler document.xml: %v", err)
+            }
+            xmlData = string(b)
+            break
+        }
+    }
 
-	log.Printf("📖 DOCX lido com sucesso: %d caracteres", len(text))
-	return text, nil
+    if xmlData == "" {
+        return "", fmt.Errorf("document.xml não encontrado no DOCX")
+    }
+
+    // Remover tags XML simples e normalizar espaços
+    // 1) substituir quebras de parágrafo por nova linha
+    xmlData = strings.ReplaceAll(xmlData, "</w:p>", "\n")
+    // 2) remover todas as tags
+    re := regexp.MustCompile(`<[^>]+>`) // tags XML
+    plain := re.ReplaceAllString(xmlData, "")
+    // 3) unescape entidades
+    plain = html.UnescapeString(plain)
+    // 4) normalizar espaços
+    plain = strings.TrimSpace(plain)
+
+    if len(strings.TrimSpace(plain)) == 0 {
+        return "", fmt.Errorf("arquivo DOCX não contém texto")
+    }
+
+    log.Printf("📖 DOCX lido com sucesso: %d caracteres", len(plain))
+    return plain, nil
 }
 
 // extractTextWithOCR extrai texto usando OCR
