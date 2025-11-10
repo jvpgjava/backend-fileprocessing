@@ -18,7 +18,7 @@ func Load() *Config {
 		Port:        getEnv("PORT", "9091"),
 		Environment: getEnv("GIN_MODE", "debug"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
-		MaxFileSize: 5 * 1024 * 1024, // 5MB
+		MaxFileSize: 25 * 1024 * 1024, // 25MB (aumentado)
 	}
 }
 

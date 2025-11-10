@@ -39,7 +39,7 @@ backend-fileprocessing/
 
 ## 🚀 Funcionalidades
 
-- **PDF**: Extração de texto nativa + OCR com Tesseract
+- **PDF**: Extração de texto nativa (UniPDF) + Google Gemini (GRATUITO!) para PDFs escaneados
 - **Imagens**: OCR para PNG, JPG, JPEG, GIF, BMP, WEBP, TIFF
 - **Texto**: Leitura direta de arquivos TXT
 - **DOCX**: Extração de texto nativa + OCR como fallback
@@ -234,9 +234,45 @@ GET /files/supported-types
 
 ### Variáveis de Ambiente
 
-- `PORT`: Porta do servidor (padrão: 8080)
+- `PORT`: Porta do servidor (padrão: 9091)
 - `GIN_MODE`: Modo do Gin (release, debug, test)
 - `LOG_LEVEL`: Nível de log (debug, info, warn, error)
+- `GEMINI_API_KEY`: **Google Gemini API Key (GRATUITO!)** - Para processar PDFs diretamente
+
+### Configurar Google Gemini (Recomendado!)
+
+O Gemini permite processar PDFs escaneados diretamente, sem precisar converter para imagens primeiro. É **GRATUITO** e funciona muito melhor que OCR tradicional!
+
+1. **Obter API Key:**
+   - Acesse: https://makersuite.google.com/app/apikey
+   - Faça login com sua conta Google
+   - Crie uma nova API Key (gratuito!)
+
+2. **Configurar (Escolha uma opção):**
+
+   **Opção 1: Criar arquivo `.env` (Recomendado para desenvolvimento local)**
+   ```bash
+   # No diretório backend-fileprocessing, crie um arquivo .env:
+   PORT=9091
+   GIN_MODE=debug
+   LOG_LEVEL=info
+   GEMINI_API_KEY=AIzaSyBrMqmufkvDulFkCLu9XzYCOqzmPEz7tFk
+   ```
+   O Go agora carrega o `.env` automaticamente! ✅
+
+   **Opção 2: Variáveis de ambiente do sistema**
+   ```bash
+   # Windows PowerShell
+   $env:GEMINI_API_KEY="AIzaSyBrMqmufkvDulFkCLu9XzYCOqzmPEz7tFk"
+   
+   # Linux/macOS
+   export GEMINI_API_KEY="AIzaSyBrMqmufkvDulFkCLu9XzYCOqzmPEz7tFk"
+   ```
+
+3. **Fluxo de Processamento:**
+   ```
+   PDF → UniPDF (texto nativo) → Se falhar → Gemini (GRATUITO!) ✅
+   ```
 
 ### Exemplo de Uso com cURL
 

@@ -1,12 +1,14 @@
 package handlers
 
 import (
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-    "backend-fileprocessing/internal/models"
-    "backend-fileprocessing/internal/services"
+	"backend-fileprocessing/internal/models"
+	"backend-fileprocessing/internal/services"
 
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 // FileHandler handler para processamento de arquivos
@@ -45,27 +47,31 @@ func (h *FileHandler) ProcessFile(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Validar tamanho do arquivo (5MB máximo)
-	maxSize := int64(5 * 1024 * 1024) // 5MB
+	// Validar tamanho do arquivo (25MB máximo - aumentado para arquivos maiores)
+	maxSize := int64(25 * 1024 * 1024) // 25MB
 	if header.Size > maxSize {
 		c.JSON(http.StatusBadRequest, models.NewErrorResponse(
 			"FILE_TOO_LARGE",
 			"Arquivo muito grande",
-			"Tamanho máximo permitido: 5MB",
+			"Tamanho máximo permitido: 25MB",
 		))
 		return
 	}
 
 	// Processar arquivo
+	log.Printf("🔄 Iniciando processamento do arquivo: %s (%.2f MB)", header.Filename, float64(header.Size)/1024/1024)
 	response, err := h.fileService.ProcessFile(file, header.Filename, header.Size)
 	if err != nil {
+		log.Printf("❌ Erro ao processar arquivo: %v", err)
 		c.JSON(http.StatusInternalServerError, models.NewErrorResponse(
 			"PROCESSING_ERROR",
-			"Erro interno do servidor",
-			err.Error(),
+			fmt.Sprintf("Erro ao processar arquivo: %v", err),
+			"Verifique se o arquivo está válido e se o serviço Gemini está configurado corretamente",
 		))
 		return
 	}
+	
+	log.Printf("📊 Resposta do processamento: success=%v", response.Success)
 
 	// Retornar resposta
 	if response.Success {

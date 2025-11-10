@@ -6,29 +6,30 @@ import (
 	"log"
 	"os"
 	"strings"
-
-	"github.com/otiai10/gosseract/v2"
-	"github.com/unidoc/unipdf/v3/extractor"
-	"github.com/unidoc/unipdf/v3/model"
 )
 
-// PDFProcessor processador de arquivos PDF
+// PDFProcessor processador de arquivos PDF usando APENAS Google Gemini
 type PDFProcessor struct {
-	ocrClient *gosseract.Client
+	geminiExtractor GeminiExtractor
 }
 
 // NewPDFProcessor cria novo processador de PDF
-func NewPDFProcessor(ocrClient *gosseract.Client) *PDFProcessor {
+func NewPDFProcessor(geminiExtractor GeminiExtractor) *PDFProcessor {
 	return &PDFProcessor{
-		ocrClient: ocrClient,
+		geminiExtractor: geminiExtractor,
 	}
 }
 
-// Process processa arquivo PDF
+// Process processa arquivo PDF usando APENAS Google Gemini
 func (p *PDFProcessor) Process(file io.Reader, filename string) (string, error) {
 	log.Printf("📄 Processando PDF: %s", filename)
 
-	// Criar arquivo temporário
+	// Verificar se Gemini está disponível
+	if p.geminiExtractor == nil || !p.geminiExtractor.IsAvailable() {
+		return "", fmt.Errorf("Gemini não está disponível - GEMINI_API_KEY não configurada. Configure a variável de ambiente GEMINI_API_KEY")
+	}
+
+	// Criar arquivo temporário para poder reler
 	tempFile, err := os.CreateTemp("", "temp_*.pdf")
 	if err != nil {
 		return "", fmt.Errorf("erro ao criar arquivo temporário: %v", err)
@@ -42,88 +43,26 @@ func (p *PDFProcessor) Process(file io.Reader, filename string) (string, error) 
 		return "", fmt.Errorf("erro ao copiar arquivo: %v", err)
 	}
 
-	// Tentar extrair texto diretamente do PDF
-	text, err := p.extractTextFromPDF(tempFile.Name())
+	// Processar com Gemini (APENAS!)
+	log.Printf("🤖 Processando PDF com Google Gemini (gratuito)...")
+
+	// Ler arquivo novamente para passar para Gemini
+	fileReader, err := os.Open(tempFile.Name())
 	if err != nil {
-		log.Printf("⚠️ Extração direta falhou: %v", err)
-		// Se falhar, tentar OCR
-		log.Printf("🔄 Tentando OCR...")
-		text, err = p.extractTextWithOCR(tempFile.Name())
-		if err != nil {
-			return "", fmt.Errorf("erro ao processar PDF: %v", err)
-		}
+		return "", fmt.Errorf("erro ao reabrir arquivo para Gemini: %v", err)
+	}
+	defer fileReader.Close()
+
+	geminiText, err := p.geminiExtractor.ExtractTextFromFile(fileReader, filename)
+	if err != nil {
+		return "", fmt.Errorf("erro ao processar PDF com Gemini: %v", err)
 	}
 
-	if len(strings.TrimSpace(text)) < 10 {
-		return "", fmt.Errorf("PDF não contém texto suficiente para análise")
+	if len(strings.TrimSpace(geminiText)) < 10 {
+		return "", fmt.Errorf("Gemini extraiu pouco texto (menos de 10 caracteres)")
 	}
 
-	log.Printf("✅ PDF processado com sucesso: %d caracteres extraídos", len(text))
-	return strings.TrimSpace(text), nil
+	log.Printf("✅ Gemini extraiu texto com sucesso: %d caracteres", len(geminiText))
+	return strings.TrimSpace(geminiText), nil
 }
 
-// extractTextFromPDF extrai texto diretamente do PDF usando unipdf
-func (p *PDFProcessor) extractTextFromPDF(filePath string) (string, error) {
-	// Abrir arquivo PDF
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	// Criar leitor PDF
-	pdfReader, err := model.NewPdfReader(file)
-	if err != nil {
-		return "", err
-	}
-
-	var fullText strings.Builder
-	numPages, err := pdfReader.GetNumPages()
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("📖 PDF tem %d páginas", numPages)
-
-	// Extrair texto de cada página
-	for i := 1; i <= numPages; i++ {
-		page, err := pdfReader.GetPage(i)
-		if err != nil {
-			log.Printf("⚠️ Erro ao ler página %d: %v", i, err)
-			continue
-		}
-
-		ex, err := extractor.New(page)
-		if err != nil {
-			log.Printf("⚠️ Erro ao criar extrator para página %d: %v", i, err)
-			continue
-		}
-
-		text, err := ex.ExtractText()
-		if err != nil {
-			log.Printf("⚠️ Erro ao extrair texto da página %d: %v", i, err)
-			continue
-		}
-
-		if len(strings.TrimSpace(text)) > 0 {
-			fullText.WriteString(text)
-			fullText.WriteString("\n")
-		}
-	}
-
-	return fullText.String(), nil
-}
-
-// extractTextWithOCR extrai texto usando OCR
-func (p *PDFProcessor) extractTextWithOCR(filePath string) (string, error) {
-	log.Printf("🔍 Iniciando OCR para PDF: %s", filePath)
-	
-	p.ocrClient.SetImage(filePath)
-	text, err := p.ocrClient.Text()
-	if err != nil {
-		return "", fmt.Errorf("erro no OCR: %v", err)
-	}
-	
-	log.Printf("✅ OCR concluído: %d caracteres extraídos", len(text))
-	return text, nil
-}

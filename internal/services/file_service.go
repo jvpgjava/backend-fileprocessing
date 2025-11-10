@@ -10,39 +10,42 @@ import (
 
     "backend-fileprocessing/internal/models"
     "backend-fileprocessing/internal/processors"
-
-    "github.com/otiai10/gosseract/v2"
 )
 
-// FileService serviço de processamento de arquivos
+// FileService serviço de processamento de arquivos usando APENAS Google Gemini
 type FileService struct {
-	ocrClient *gosseract.Client
-	processors map[string]processors.FileProcessor
+	geminiService *GeminiService
+	processors    map[string]processors.FileProcessor
 }
 
 // NewFileService cria novo serviço de arquivos
 func NewFileService() *FileService {
-	// Inicializar cliente OCR
-	ocrClient := gosseract.NewClient()
-	ocrClient.SetLanguage("por", "eng")
+	// Inicializar serviço Gemini (OBRIGATÓRIO!)
+	geminiService := NewGeminiService()
+	if !geminiService.IsAvailable() {
+		log.Printf("⚠️ ATENÇÃO: Gemini não disponível - GEMINI_API_KEY não configurada")
+		log.Printf("⚠️ Configure GEMINI_API_KEY para processar arquivos")
+	} else {
+		log.Printf("✅ Gemini configurado e disponível")
+	}
 
-	// Mapear processadores por tipo de arquivo
+	// Mapear processadores por tipo de arquivo - TODOS usam Gemini!
 	processorsMap := map[string]processors.FileProcessor{
-		".pdf":  processors.NewPDFProcessor(ocrClient),
-		".png":  processors.NewImageProcessor(ocrClient),
-		".jpg":  processors.NewImageProcessor(ocrClient),
-		".jpeg": processors.NewImageProcessor(ocrClient),
-		".gif":  processors.NewImageProcessor(ocrClient),
-		".bmp":  processors.NewImageProcessor(ocrClient),
-		".webp": processors.NewImageProcessor(ocrClient),
-		".tiff": processors.NewImageProcessor(ocrClient),
+		".pdf":  processors.NewPDFProcessor(geminiService),
+		".png":  processors.NewImageProcessor(geminiService),
+		".jpg":  processors.NewImageProcessor(geminiService),
+		".jpeg": processors.NewImageProcessor(geminiService),
+		".gif":  processors.NewImageProcessor(geminiService),
+		".bmp":  processors.NewImageProcessor(geminiService),
+		".webp": processors.NewImageProcessor(geminiService),
+		".tiff": processors.NewImageProcessor(geminiService),
 		".txt":  processors.NewTextProcessor(),
-		".docx": processors.NewDocxProcessor(ocrClient),
+		".docx": processors.NewDocxProcessor(geminiService),
 	}
 
 	return &FileService{
-		ocrClient:  ocrClient,
-		processors: processorsMap,
+		geminiService: geminiService,
+		processors:    processorsMap,
 	}
 }
 
@@ -87,14 +90,12 @@ func (fs *FileService) GetSupportedTypes() *models.SupportedTypes {
 	return &models.SupportedTypes{
 		Documents: []string{".pdf", ".txt", ".docx"},
 		Images:    []string{".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tiff"},
-		MaxSize:   "5MB",
-		MaxSizeBytes: 5 * 1024 * 1024,
+		MaxSize:   "25MB",
+		MaxSizeBytes: 25 * 1024 * 1024,
 	}
 }
 
 // Close fecha recursos do serviço
 func (fs *FileService) Close() {
-	if fs.ocrClient != nil {
-		fs.ocrClient.Close()
-	}
+	// Gemini não precisa de cleanup
 }

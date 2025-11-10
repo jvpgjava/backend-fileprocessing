@@ -11,6 +11,7 @@ import (
 	"backend-fileprocessing/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -22,6 +23,12 @@ import (
 // @BasePath /
 // @schemes http
 func main() {
+	// Carregar variáveis de ambiente do arquivo .env (se existir)
+	// Isso facilita desenvolvimento local - em produção use variáveis de ambiente reais
+	if err := godotenv.Load(); err != nil {
+		log.Printf("⚠️ Arquivo .env não encontrado (isso é normal em produção)")
+	}
+
 	// Carregar configurações
 	cfg := config.Load()
 

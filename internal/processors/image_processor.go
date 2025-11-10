@@ -5,33 +5,32 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
-
-	"github.com/otiai10/gosseract/v2"
 )
 
-// ImageProcessor processador de arquivos de imagem
+// ImageProcessor processador de arquivos de imagem usando Google Gemini
 type ImageProcessor struct {
-	ocrClient *gosseract.Client
+	geminiExtractor GeminiExtractor
 }
 
 // NewImageProcessor cria novo processador de imagem
-func NewImageProcessor(ocrClient *gosseract.Client) *ImageProcessor {
+func NewImageProcessor(geminiExtractor GeminiExtractor) *ImageProcessor {
 	return &ImageProcessor{
-		ocrClient: ocrClient,
+		geminiExtractor: geminiExtractor,
 	}
 }
 
-// Process processa arquivo de imagem
+// Process processa arquivo de imagem usando Google Gemini
 func (p *ImageProcessor) Process(file io.Reader, filename string) (string, error) {
 	log.Printf("🖼️ Processando imagem: %s", filename)
 
-	// Obter extensão do arquivo
-	ext := strings.ToLower(filepath.Ext(filename))
+	// Verificar se Gemini está disponível
+	if p.geminiExtractor == nil || !p.geminiExtractor.IsAvailable() {
+		return "", fmt.Errorf("Gemini não está disponível - GEMINI_API_KEY não configurada")
+	}
 
-	// Criar arquivo temporário
-	tempFile, err := os.CreateTemp("", "temp_*"+ext)
+	// Criar arquivo temporário para poder reler
+	tempFile, err := os.CreateTemp("", "temp_*")
 	if err != nil {
 		return "", fmt.Errorf("erro ao criar arquivo temporário: %v", err)
 	}
@@ -44,31 +43,25 @@ func (p *ImageProcessor) Process(file io.Reader, filename string) (string, error
 		return "", fmt.Errorf("erro ao copiar arquivo: %v", err)
 	}
 
-	// Extrair texto com OCR
-	text, err := p.extractTextWithOCR(tempFile.Name())
+	// Processar com Gemini
+	log.Printf("🤖 Processando imagem com Google Gemini...")
+
+	// Ler arquivo novamente para passar para Gemini
+	fileReader, err := os.Open(tempFile.Name())
 	if err != nil {
-		return "", fmt.Errorf("erro ao processar imagem: %v", err)
+		return "", fmt.Errorf("erro ao reabrir arquivo para Gemini: %v", err)
+	}
+	defer fileReader.Close()
+
+	text, err := p.geminiExtractor.ExtractTextFromFile(fileReader, filename)
+	if err != nil {
+		return "", fmt.Errorf("erro ao processar imagem com Gemini: %v", err)
 	}
 
-	if len(strings.TrimSpace(text)) == 0 {
-		imageType := strings.ToUpper(ext[1:])
-		text = fmt.Sprintf("[IMAGEM %s] - Nenhum texto detectado na imagem", imageType)
+	if len(strings.TrimSpace(text)) < 10 {
+		return "", fmt.Errorf("Gemini extraiu pouco texto (menos de 10 caracteres)")
 	}
 
-	log.Printf("✅ Imagem processada com sucesso: %d caracteres extraídos", len(text))
+	log.Printf("✅ Gemini extraiu texto da imagem: %d caracteres", len(text))
 	return strings.TrimSpace(text), nil
-}
-
-// extractTextWithOCR extrai texto usando OCR
-func (p *ImageProcessor) extractTextWithOCR(filePath string) (string, error) {
-	log.Printf("🔍 Iniciando OCR para imagem: %s", filePath)
-	
-	p.ocrClient.SetImage(filePath)
-	text, err := p.ocrClient.Text()
-	if err != nil {
-		return "", fmt.Errorf("erro no OCR: %v", err)
-	}
-	
-	log.Printf("✅ OCR concluído: %d caracteres extraídos", len(text))
-	return text, nil
 }
