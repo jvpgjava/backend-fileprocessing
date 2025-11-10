@@ -6,14 +6,9 @@ import (
 
 	_ "backend-fileprocessing/docs"
 	"backend-fileprocessing/internal/config"
-	"backend-fileprocessing/internal/handlers"
-	"backend-fileprocessing/internal/middleware"
-	"backend-fileprocessing/internal/services"
+	"backend-fileprocessing/internal/server"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title Backend File Processing API
@@ -32,7 +27,7 @@ func main() {
 	// Carregar configurações
 	cfg := config.Load()
 
-	router := newRouter(cfg)
+	router := server.NewRouter(cfg)
 
 	// Iniciar servidor
 	port := os.Getenv("PORT")
@@ -48,52 +43,5 @@ func main() {
 
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Erro ao iniciar servidor:", err)
-	}
-}
-
-func newRouter(cfg *config.Config) *gin.Engine {
-	// Configurar Gin
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	// Criar router
-	router := gin.New()
-
-	// Middleware global
-	router.Use(middleware.Logger())
-	router.Use(middleware.Recovery())
-	router.Use(middleware.CORS())
-
-	// Inicializar serviços
-	fileService := services.NewFileService()
-
-	// Inicializar handlers
-	fileHandler := handlers.NewFileHandler(fileService)
-	healthHandler := handlers.NewHealthHandler()
-
-	// Configurar rotas
-	setupRoutes(router, fileHandler, healthHandler)
-
-	return router
-}
-
-func setupRoutes(router *gin.Engine, fileHandler *handlers.FileHandler, healthHandler *handlers.HealthHandler) {
-	// Swagger documentation
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// API v1
-	v1 := router.Group("/api/v1")
-	{
-		// Health check
-		v1.GET("/health", healthHandler.HealthCheck)
-		v1.GET("/status", healthHandler.Status)
-
-		// File processing
-		files := v1.Group("/files")
-		{
-			files.POST("/process", fileHandler.ProcessFile)
-			files.GET("/supported-types", fileHandler.GetSupportedTypes)
-		}
 	}
 }
