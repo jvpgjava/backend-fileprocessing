@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-    _ "backend-fileprocessing/docs"
+	_ "backend-fileprocessing/docs"
 	"backend-fileprocessing/internal/config"
 	"backend-fileprocessing/internal/handlers"
 	"backend-fileprocessing/internal/middleware"
@@ -32,6 +32,26 @@ func main() {
 	// Carregar configurações
 	cfg := config.Load()
 
+	router := newRouter(cfg)
+
+	// Iniciar servidor
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port
+	}
+
+	log.Printf("🚀 Servidor iniciado na porta %s", port)
+	log.Printf("📁 Serviço de processamento de arquivos ativo")
+	log.Printf("🔗 Health check: http://localhost:%s/api/v1/health", port)
+	log.Printf("📤 Processar arquivo: http://localhost:%s/api/v1/files/process", port)
+	log.Printf("📚 Documentação Swagger: http://localhost:%s/swagger/index.html", port)
+
+	if err := router.Run(":" + port); err != nil {
+		log.Fatal("Erro ao iniciar servidor:", err)
+	}
+}
+
+func newRouter(cfg *config.Config) *gin.Engine {
 	// Configurar Gin
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -55,21 +75,7 @@ func main() {
 	// Configurar rotas
 	setupRoutes(router, fileHandler, healthHandler)
 
-	// Iniciar servidor
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = cfg.Port
-	}
-
-	log.Printf("🚀 Servidor iniciado na porta %s", port)
-	log.Printf("📁 Serviço de processamento de arquivos ativo")
-	log.Printf("🔗 Health check: http://localhost:%s/api/v1/health", port)
-	log.Printf("📤 Processar arquivo: http://localhost:%s/api/v1/files/process", port)
-	log.Printf("📚 Documentação Swagger: http://localhost:%s/swagger/index.html", port)
-
-	if err := router.Run(":" + port); err != nil {
-		log.Fatal("Erro ao iniciar servidor:", err)
-	}
+	return router
 }
 
 func setupRoutes(router *gin.Engine, fileHandler *handlers.FileHandler, healthHandler *handlers.HealthHandler) {
